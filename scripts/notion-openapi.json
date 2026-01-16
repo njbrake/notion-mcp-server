@@ -665,7 +665,7 @@
                   "after": {
                     "type": "string",
                     "format": "uuid",
-                    "description": "The UUID of an existing block to insert after. IMPORTANT: This must be a block UUID (e.g., 'ebfd46f1-0024-48b6-85f7-96b4cae7064d'), NOT heading text. First call 'get-block-children' to list all blocks with their [block:uuid] IDs, then use the desired block's UUID here."
+                    "description": "The UUID of an existing block to insert after."
                   }
                 }
               }
