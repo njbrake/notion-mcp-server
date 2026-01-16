@@ -22,11 +22,105 @@ type FunctionParameters = {
 export class OpenAPIToMCPConverter {
   private schemaCache: Record<string, IJsonSchema> = {}
   private nameCounter: number = 0
+  private allComponentSchemas: Record<string, IJsonSchema> | null = null
 
   constructor(
     private openApiSpec: OpenAPIV3.Document | OpenAPIV3_1.Document,
     private filterConfig?: ToolFilterConfig
   ) {}
+
+  /**
+   * Lazily compute and cache all component schemas.
+   * This is computed once and reused for selective inclusion.
+   */
+  private getAllComponentSchemas(): Record<string, IJsonSchema> {
+    if (this.allComponentSchemas === null) {
+      this.allComponentSchemas = this.convertComponentsToJsonSchema()
+    }
+    return this.allComponentSchemas
+  }
+
+  /**
+   * Collect all schema names referenced by a given JSON Schema.
+   * Follows $refs and recursively collects from nested structures.
+   */
+  private collectReferencedSchemaNames(schema: IJsonSchema, collected: Set<string> = new Set()): Set<string> {
+    if (!schema || typeof schema !== 'object') {
+      return collected
+    }
+
+    // Handle $ref
+    if ('$ref' in schema && typeof schema.$ref === 'string') {
+      const ref = schema.$ref
+      if (ref.startsWith('#/$defs/')) {
+        const schemaName = ref.replace('#/$defs/', '')
+        if (!collected.has(schemaName)) {
+          collected.add(schemaName)
+          // Recursively collect from the referenced schema
+          const allSchemas = this.getAllComponentSchemas()
+          if (allSchemas[schemaName]) {
+            this.collectReferencedSchemaNames(allSchemas[schemaName], collected)
+          }
+        }
+      }
+    }
+
+    // Handle properties
+    if (schema.properties && typeof schema.properties === 'object') {
+      for (const prop of Object.values(schema.properties)) {
+        this.collectReferencedSchemaNames(prop as IJsonSchema, collected)
+      }
+    }
+
+    // Handle items (arrays)
+    if (schema.items) {
+      if (Array.isArray(schema.items)) {
+        for (const item of schema.items) {
+          this.collectReferencedSchemaNames(item as IJsonSchema, collected)
+        }
+      } else {
+        this.collectReferencedSchemaNames(schema.items as IJsonSchema, collected)
+      }
+    }
+
+    // Handle additionalProperties
+    if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+      this.collectReferencedSchemaNames(schema.additionalProperties as IJsonSchema, collected)
+    }
+
+    // Handle oneOf, anyOf, allOf
+    for (const key of ['oneOf', 'anyOf', 'allOf'] as const) {
+      const composites = (schema as any)[key]
+      if (Array.isArray(composites)) {
+        for (const subSchema of composites) {
+          this.collectReferencedSchemaNames(subSchema as IJsonSchema, collected)
+        }
+      }
+    }
+
+    return collected
+  }
+
+  /**
+   * Build a selective $defs object containing only the schemas referenced by the given schema.
+   * Returns undefined if no schemas are referenced (to avoid empty $defs).
+   */
+  private buildSelectiveDefs(schema: IJsonSchema): Record<string, IJsonSchema> | undefined {
+    const referencedNames = this.collectReferencedSchemaNames(schema)
+    if (referencedNames.size === 0) {
+      return undefined
+    }
+
+    const allSchemas = this.getAllComponentSchemas()
+    const selectiveDefs: Record<string, IJsonSchema> = {}
+    for (const name of referencedNames) {
+      if (allSchemas[name]) {
+        selectiveDefs[name] = allSchemas[name]
+      }
+    }
+
+    return Object.keys(selectiveDefs).length > 0 ? selectiveDefs : undefined
+  }
 
   /**
    * Resolve a $ref reference to its schema in the openApiSpec.
@@ -275,11 +369,11 @@ export class OpenAPIToMCPConverter {
     method: string,
     path: string,
   ): IJsonSchema & { type: 'object' } {
+    // Build schema without $defs first, then add only referenced schemas
     const schema: IJsonSchema & { type: 'object' } = {
       type: 'object',
       properties: {},
       required: [],
-      $defs: this.convertComponentsToJsonSchema(),
     }
 
     // Handle parameters (path, query, header, cookie)
@@ -316,6 +410,12 @@ export class OpenAPIToMCPConverter {
           }
         }
       }
+    }
+
+    // Add selective $defs - only include schemas that are actually referenced
+    const selectiveDefs = this.buildSelectiveDefs(schema)
+    if (selectiveDefs) {
+      (schema as any).$defs = selectiveDefs
     }
 
     return schema
@@ -377,8 +477,8 @@ export class OpenAPIToMCPConverter {
 
     const methodName = operation.operationId
 
+    // Build schema without $defs first, then add only referenced schemas
     const inputSchema: IJsonSchema & { type: 'object' } = {
-      $defs: this.convertComponentsToJsonSchema(),
       type: 'object',
       properties: {},
       required: [],
@@ -459,28 +559,17 @@ export class OpenAPIToMCPConverter {
     // Extract return type (response schema)
     const returnSchema = this.extractResponseType(operation.responses)
 
-    // Generate Zod schema from input schema
-    try {
-      // const zodSchemaStr = jsonSchemaToZod(inputSchema, { module: "cjs" })
-      // console.log(zodSchemaStr)
-      // // Execute the function with the zod instance
-      // const zodSchema = eval(zodSchemaStr) as z.ZodType
+    // Add selective $defs - only include schemas that are actually referenced
+    const selectiveDefs = this.buildSelectiveDefs(inputSchema)
+    if (selectiveDefs) {
+      (inputSchema as any).$defs = selectiveDefs
+    }
 
-      return {
-        name: methodName,
-        description,
-        inputSchema,
-        ...(returnSchema ? { returnSchema } : {}),
-      }
-    } catch (error) {
-      console.warn(`Failed to generate Zod schema for ${methodName}:`, error)
-      // Fallback to a basic object schema
-      return {
-        name: methodName,
-        description,
-        inputSchema,
-        ...(returnSchema ? { returnSchema } : {}),
-      }
+    return {
+      name: methodName,
+      description,
+      inputSchema,
+      ...(returnSchema ? { returnSchema } : {}),
     }
   }
 
@@ -494,7 +583,11 @@ export class OpenAPIToMCPConverter {
 
     if (responseObj.content['application/json']?.schema) {
       const returnSchema = this.convertOpenApiSchemaToJsonSchema(responseObj.content['application/json'].schema, new Set(), false)
-      returnSchema['$defs'] = this.convertComponentsToJsonSchema()
+      // Add selective $defs - only include schemas that are actually referenced
+      const selectiveDefs = this.buildSelectiveDefs(returnSchema)
+      if (selectiveDefs) {
+        returnSchema['$defs'] = selectiveDefs
+      }
 
       // Preserve the response description if available and not already set
       if (responseObj.description && !returnSchema.description) {
