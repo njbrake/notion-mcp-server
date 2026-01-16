@@ -542,6 +542,39 @@ By: [user:${comment.created_by.id}]`
   }
 
   private formatFallback(data: any): string {
-    return JSON.stringify(data, null, 2)
+    const cleaned = this.stripRedundantFields(data)
+    return JSON.stringify(cleaned, null, 2)
+  }
+
+  private stripRedundantFields(data: any): any {
+    if (data === null || data === undefined) {
+      return data
+    }
+
+    if (Array.isArray(data)) {
+      return data.map(item => this.stripRedundantFields(item))
+    }
+
+    if (typeof data !== 'object') {
+      return data
+    }
+
+    const cleaned: Record<string, any> = {}
+
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'plain_text' && data.text?.content !== undefined) {
+        continue
+      }
+      if (key === 'href' && data.text?.link !== undefined) {
+        continue
+      }
+      if (key === 'object' && data.id !== undefined) {
+        continue
+      }
+
+      cleaned[key] = this.stripRedundantFields(value)
+    }
+
+    return cleaned
   }
 }

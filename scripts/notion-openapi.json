@@ -69,15 +69,27 @@
               }
             },
             "additionalProperties": false
-          },
-          "type": {
-            "enum": [
-              "text"
-            ],
-            "type": "string"
           }
         },
         "additionalProperties": false
+      },
+      "errorResponse": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "type": "string",
+            "const": "error"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
       },
       "pageIdParentRequest": {
         "type": "object",
@@ -94,10 +106,6 @@
       "dataSourceIdParentRequest": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "const": "database_id"
-          },
           "database_id": {
             "type": "string",
             "format": "uuid"
@@ -118,12 +126,13 @@
           {
             "type": "object",
             "properties": {
-              "type": {
-                "const": "workspace"
+              "workspace": {
+                "type": "boolean",
+                "const": true
               }
             },
             "required": [
-              "type"
+              "workspace"
             ]
           }
         ]
@@ -131,46 +140,21 @@
       "movePageParentRequest": {
         "oneOf": [
           {
-            "type": "object",
-            "properties": {
-              "type": {
-                "const": "page_id"
-              },
-              "page_id": {
-                "type": "string",
-                "format": "uuid"
-              }
-            },
-            "required": [
-              "type",
-              "page_id"
-            ]
+            "$ref": "#/components/schemas/pageIdParentRequest"
+          },
+          {
+            "$ref": "#/components/schemas/dataSourceIdParentRequest"
           },
           {
             "type": "object",
             "properties": {
-              "type": {
-                "const": "database_id"
-              },
-              "database_id": {
-                "type": "string",
-                "format": "uuid"
+              "workspace": {
+                "type": "boolean",
+                "const": true
               }
             },
             "required": [
-              "type",
-              "database_id"
-            ]
-          },
-          {
-            "type": "object",
-            "properties": {
-              "type": {
-                "const": "workspace"
-              }
-            },
-            "required": [
-              "type"
+              "workspace"
             ]
           }
         ]
@@ -212,14 +196,11 @@
             "required": [
               "rich_text"
             ]
-          },
-          "type": {
-            "enum": [
-              "paragraph"
-            ],
-            "type": "string"
           }
         },
+        "required": [
+          "paragraph"
+        ],
         "additionalProperties": false
       },
       "bulletedListItemBlockRequest": {
@@ -240,14 +221,11 @@
             "required": [
               "rich_text"
             ]
-          },
-          "type": {
-            "enum": [
-              "bulleted_list_item"
-            ],
-            "type": "string"
           }
         },
+        "required": [
+          "bulleted_list_item"
+        ],
         "additionalProperties": false
       },
       "blockObjectRequest": {
@@ -308,9 +286,6 @@
               "type": "string",
               "format": "uuid"
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -323,17 +298,11 @@
             }
           },
           "400": {
-            "description": "400",
+            "description": "Bad request",
             "content": {
               "application/json": {
-                "examples": {
-                  "Result": {
-                    "value": {}
-                  }
-                },
                 "schema": {
-                  "type": "object",
-                  "properties": {}
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -365,24 +334,15 @@
               "type": "integer",
               "default": 100
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
           "400": {
-            "description": "400",
+            "description": "Bad request",
             "content": {
               "application/json": {
-                "examples": {
-                  "Result": {
-                    "value": {}
-                  }
-                },
                 "schema": {
-                  "type": "object",
-                  "properties": {}
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -406,11 +366,7 @@
         "summary": "Retrieve bot user information for this MCP server connection",
         "description": "Returns information about the bot user for this MCP server connection, including owner information. Authentication is already configured - you do not need to provide tokens or credentials.",
         "operationId": "get-self",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/notionVersion"
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "200",
@@ -517,23 +473,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -548,11 +488,7 @@
         "summary": "Search workspace for pages and data sources by title",
         "description": "Searches across the workspace for pages and data sources by title - typically the first step when finding content by name. Authentication is pre-configured. Results include [page:id] or [db:id] references which you should use with 'retrieve-a-page', 'retrieve-a-data-source', or 'get-block-children' to access the actual content or metadata. Can filter results to only pages or only data sources using filter.property='object' and filter.value='page'|'data_source'. Results ordered by relevance or last_edited_time (configurable via sort parameter). Supports pagination via start_cursor for workspaces with many results.",
         "operationId": "post-search",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/notionVersion"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "content": {
             "application/json": {
@@ -626,23 +562,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -684,9 +604,6 @@
               "format": "int32",
               "default": 100
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -705,23 +622,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -743,9 +644,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -789,23 +687,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -829,9 +711,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -850,23 +729,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -888,9 +751,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -930,23 +790,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -968,9 +812,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -989,23 +830,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1037,9 +862,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -1058,23 +880,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1096,9 +902,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -1238,23 +1041,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1269,11 +1056,7 @@
         "summary": "Create page as child of another page or as data source row",
         "description": "Creates a new page as a child of another page or as a row in a data source. Authentication is pre-configured. The parent parameter specifies where to create: use {page_id: 'xxx'} for child pages or {database_id: 'xxx'} for data source rows. For data source pages, the properties must match the data source schema - call 'retrieve-a-data-source' first to see required properties and their types. For standalone pages, typically only a title property is needed. Can optionally include initial content via the children parameter (array of block objects). Returns the newly created page with [page:id] reference. Icon and cover are optional.",
         "operationId": "post-page",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/notionVersion"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "content": {
             "application/json": {
@@ -1363,23 +1146,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1429,9 +1196,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -1448,23 +1212,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1505,9 +1253,6 @@
               "type": "integer",
               "format": "int32"
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -1570,23 +1315,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1701,23 +1430,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1755,9 +1468,6 @@
                 "type": "string"
               }
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -1810,23 +1520,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1853,9 +1547,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -1874,23 +1565,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1915,9 +1590,6 @@
               "type": "string"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -1964,23 +1636,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -1998,11 +1654,7 @@
         "tags": [
           "Data sources"
         ],
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/notionVersion"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2048,23 +1700,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -2106,9 +1742,6 @@
               "type": "integer",
               "default": 100
             }
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "responses": {
@@ -2127,23 +1760,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
@@ -2171,9 +1788,6 @@
               "format": "uuid"
             },
             "required": true
-          },
-          {
-            "$ref": "#/components/parameters/notionVersion"
           }
         ],
         "requestBody": {
@@ -2209,23 +1823,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "object": {
-                      "type": "string",
-                      "example": "error"
-                    },
-                    "status": {
-                      "type": "integer",
-                      "example": 400
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/errorResponse"
                 }
               }
             }
