@@ -10,7 +10,7 @@ export class MarkdownConverter {
   }
 
   private convertSingleRichText(richText: RichText): string {
-    let text = richText.plain_text
+    let text = richText.text?.content ?? richText.plain_text
 
     if (richText.type === 'equation' && richText.equation) {
       return `$${richText.equation.expression}$`
