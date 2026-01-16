@@ -2,22 +2,18 @@ import { OpenAPIToMCPConverter } from '../parser'
 import { OpenAPIV3 } from 'openapi-types'
 import { describe, expect, it } from 'vitest'
 import { JSONSchema7 as IJsonSchema } from 'json-schema'
-
 interface ToolMethod {
   name: string
   description: string
   inputSchema: any
   returnSchema?: any
 }
-
 interface Tool {
   methods: ToolMethod[]
 }
-
 interface Tools {
   [key: string]: Tool
 }
-
 // Helper function to verify tool method structure without checking the exact Zod schema
 function verifyToolMethod(actual: ToolMethod, expected: any, toolName: string) {
   expect(actual.name).toBe(expected.name)
@@ -27,7 +23,6 @@ function verifyToolMethod(actual: ToolMethod, expected: any, toolName: string) {
     expect(actual.returnSchema, `returnSchema ${actual.name} ${toolName}`).toEqual(expected.returnSchema)
   }
 }
-
 // Helper function to verify tools structure
 function verifyTools(actual: Tools, expected: any) {
   expect(Object.keys(actual)).toEqual(Object.keys(expected))
@@ -38,7 +33,6 @@ function verifyTools(actual: Tools, expected: any) {
     })
   }
 }
-
 // A helper function to derive a type from a possibly complex schema.
 // If no explicit type is found, we assume 'object' for testing purposes.
 function getTypeFromSchema(schema: IJsonSchema): string {
@@ -53,7 +47,6 @@ function getTypeFromSchema(schema: IJsonSchema): string {
   }
   return 'object'
 }
-
 // Updated helper function to get parameters from inputSchema
 // Now handles $ref by treating it as an object reference without expecting properties.
 function getParamsFromSchema(method: { inputSchema: IJsonSchema }) {
@@ -61,7 +54,6 @@ function getParamsFromSchema(method: { inputSchema: IJsonSchema }) {
     if (typeof prop === 'boolean') {
       throw new Error(`Boolean schema not supported for parameter ${name}`)
     }
-
     // If there's a $ref, treat it as an object reference.
     const schemaType = getTypeFromSchema(prop)
     return {
@@ -72,7 +64,6 @@ function getParamsFromSchema(method: { inputSchema: IJsonSchema }) {
     }
   })
 }
-
 // Updated helper function to get return type from returnSchema
 // No longer requires that the schema be fully expanded. If we have a $ref, just note it as 'object'.
 function getReturnType(method: { returnSchema?: IJsonSchema }) {
@@ -83,7 +74,6 @@ function getReturnType(method: { returnSchema?: IJsonSchema }) {
     description: schema.description,
   }
 }
-
 describe('OpenAPIToMCPConverter', () => {
   describe('Simple API Conversion', () => {
     const sampleSpec: OpenAPIV3.Document = {
@@ -128,18 +118,14 @@ describe('OpenAPIToMCPConverter', () => {
         },
       },
     }
-
     it('converts simple OpenAPI paths to MCP tools', () => {
       const converter = new OpenAPIToMCPConverter(sampleSpec)
       const { tools, openApiLookup } = converter.convertToMCPTools()
-
       expect(tools).toHaveProperty('API')
       expect(tools.API.methods).toHaveLength(1)
       expect(Object.keys(openApiLookup)).toHaveLength(1)
-
       const getPetMethod = tools.API.methods.find((m) => m.name === 'getPet')
       expect(getPetMethod).toBeDefined()
-
       const params = getParamsFromSchema(getPetMethod!)
       expect(params).toContainEqual({
         name: 'petId',
@@ -148,7 +134,6 @@ describe('OpenAPIToMCPConverter', () => {
         optional: false,
       })
     })
-
     it('truncates tool names exceeding 64 characters', () => {
       const longOperationId = 'a'.repeat(65)
       const specWithLongName: OpenAPIV3.Document = {
@@ -193,16 +178,13 @@ describe('OpenAPIToMCPConverter', () => {
           }
         }
       }
-
       const converter = new OpenAPIToMCPConverter(specWithLongName)
       const { tools } = converter.convertToMCPTools()
-
       const longNameMethod = tools.API.methods.find(m => m.name.startsWith('a'.repeat(59)))
       expect(longNameMethod).toBeDefined()
       expect(longNameMethod!.name.length).toBeLessThanOrEqual(64)
     })
   })
-
   describe('Complex API Conversion', () => {
     const complexSpec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -374,11 +356,9 @@ describe('OpenAPIToMCPConverter', () => {
         },
       },
     }
-
     it('converts operations with referenced parameters', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const getPetMethod = tools.API.methods.find((m) => m.name === 'getPet')
       expect(getPetMethod).toBeDefined()
       const params = getParamsFromSchema(getPetMethod!)
@@ -389,14 +369,11 @@ describe('OpenAPIToMCPConverter', () => {
         optional: false,
       })
     })
-
     it('converts operations with query parameters', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const listPetsMethod = tools.API.methods.find((m) => m.name === 'listPets')
       expect(listPetsMethod).toBeDefined()
-
       const params = getParamsFromSchema(listPetsMethod!)
       expect(params).toContainEqual({
         name: 'limit',
@@ -405,14 +382,11 @@ describe('OpenAPIToMCPConverter', () => {
         optional: true,
       })
     })
-
     it('converts operations with array responses', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const listPetsMethod = tools.API.methods.find((m) => m.name === 'listPets')
       expect(listPetsMethod).toBeDefined()
-
       const returnType = getReturnType(listPetsMethod!)
       // Now we only check type since description might not be carried through
       // if we are not expanding schemas.
@@ -420,14 +394,11 @@ describe('OpenAPIToMCPConverter', () => {
         type: 'array',
       })
     })
-
     it('converts operations with request bodies using $ref', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const createPetMethod = tools.API.methods.find((m) => m.name === 'createPet')
       expect(createPetMethod).toBeDefined()
-
       const params = getParamsFromSchema(createPetMethod!)
       // Now that we are preserving $ref, the request body won't be expanded into multiple parameters.
       // Instead, we'll have a single "body" parameter referencing Pet.
@@ -441,47 +412,36 @@ describe('OpenAPIToMCPConverter', () => {
         ]),
       )
     })
-
     it('converts operations with referenced error responses', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const getPetMethod = tools.API.methods.find((m) => m.name === 'getPet')
       expect(getPetMethod).toBeDefined()
-
       // We just check that the description includes the error references now.
       expect(getPetMethod?.description).toContain('404: The specified resource was not found')
     })
-
     it('handles recursive schema references without expanding them', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       const createPetMethod = tools.API.methods.find((m) => m.name === 'createPet')
       expect(createPetMethod).toBeDefined()
-
       const params = getParamsFromSchema(createPetMethod!)
       // Since "category" would be inside Pet, and we're not expanding,
       // we won't see 'category' directly. We only have 'body' as a reference.
       // Thus, the test no longer checks for a direct 'category' param.
       expect(params.find((p) => p.name === 'body')).toBeDefined()
     })
-
     it('converts all operations correctly respecting $ref usage', () => {
       const converter = new OpenAPIToMCPConverter(complexSpec)
       const { tools } = converter.convertToMCPTools()
-
       expect(tools.API.methods).toHaveLength(4)
-
       const methodNames = tools.API.methods.map((m) => m.name)
       expect(methodNames).toEqual(expect.arrayContaining(['listPets', 'createPet', 'getPet', 'updatePet']))
-
       tools.API.methods.forEach((method) => {
         expect(method).toHaveProperty('name')
         expect(method).toHaveProperty('description')
         expect(method).toHaveProperty('inputSchema')
         expect(method).toHaveProperty('returnSchema')
-
         // For 'get' operations, we just check the return type is recognized correctly.
         if (method.name.startsWith('get')) {
           const returnType = getReturnType(method)
@@ -491,12 +451,10 @@ describe('OpenAPIToMCPConverter', () => {
       })
     })
   })
-
   describe('Complex Schema Conversion', () => {
     // A similar approach for the nested spec
     // Just as in the previous tests, we no longer test for direct property expansion.
     // We only confirm that parameters and return types are recognized and that references are preserved.
-
     const nestedSpec: OpenAPIV3.Document = {
       openapi: '3.0.0',
       info: { title: 'Nested API', version: '1.0.0' },
@@ -590,7 +548,6 @@ describe('OpenAPIToMCPConverter', () => {
               },
               customFields: {
                 type: 'object',
-                additionalProperties: true,
               },
             },
           },
@@ -693,14 +650,11 @@ describe('OpenAPIToMCPConverter', () => {
         },
       },
     }
-
     it('handles deeply nested object references', () => {
       const converter = new OpenAPIToMCPConverter(nestedSpec)
       const { tools } = converter.convertToMCPTools()
-
       const getOrgMethod = tools.API.methods.find((m) => m.name === 'getOrganization')
       expect(getOrgMethod).toBeDefined()
-
       const params = getParamsFromSchema(getOrgMethod!)
       expect(params).toEqual(
         expect.arrayContaining([
@@ -725,14 +679,11 @@ describe('OpenAPIToMCPConverter', () => {
         ]),
       )
     })
-
     it('handles recursive array references without requiring expansion', () => {
       const converter = new OpenAPIToMCPConverter(nestedSpec)
       const { tools } = converter.convertToMCPTools()
-
       const updateDeptMethod = tools.API.methods.find((m) => m.name === 'updateDepartment')
       expect(updateDeptMethod).toBeDefined()
-
       const params = getParamsFromSchema(updateDeptMethod!)
       // With $ref usage, we have a body parameter referencing Department.
       // The subDepartments array is inside Department, so we won't see it expanded here.
@@ -741,14 +692,11 @@ describe('OpenAPIToMCPConverter', () => {
       expect(bodyParam).toBeDefined()
       expect(bodyParam?.type).toBe('object')
     })
-
     it('handles complex nested object hierarchies without expansion', () => {
       const converter = new OpenAPIToMCPConverter(nestedSpec)
       const { tools } = converter.convertToMCPTools()
-
       const getDeptMethod = tools.API.methods.find((m) => m.name === 'getDepartment')
       expect(getDeptMethod).toBeDefined()
-
       const params = getParamsFromSchema(getDeptMethod!)
       // Just checking top-level params:
       expect(params).toEqual(
@@ -776,35 +724,27 @@ describe('OpenAPIToMCPConverter', () => {
         ]),
       )
     })
-
     it('handles schema with mixed primitive and reference types without expansion', () => {
       const converter = new OpenAPIToMCPConverter(nestedSpec)
       const { tools } = converter.convertToMCPTools()
-
       const updateDeptMethod = tools.API.methods.find((m) => m.name === 'updateDepartment')
       expect(updateDeptMethod).toBeDefined()
-
       const params = getParamsFromSchema(updateDeptMethod!)
       // Since we are not expanding, we won't see metadata fields directly.
       // We just confirm 'body' referencing Department is there.
       expect(params.find((p) => p.name === 'body')).toBeDefined()
     })
-
     it('converts all operations with complex schemas correctly respecting $ref', () => {
       const converter = new OpenAPIToMCPConverter(nestedSpec)
       const { tools } = converter.convertToMCPTools()
-
       expect(tools.API.methods).toHaveLength(3)
-
       const methodNames = tools.API.methods.map((m) => m.name)
       expect(methodNames).toEqual(expect.arrayContaining(['getOrganization', 'getDepartment', 'updateDepartment']))
-
       tools.API.methods.forEach((method) => {
         expect(method).toHaveProperty('name')
         expect(method).toHaveProperty('description')
         expect(method).toHaveProperty('inputSchema')
         expect(method).toHaveProperty('returnSchema')
-
         // If it's a GET operation, check that return type is recognized.
         if (method.name.startsWith('get')) {
           const returnType = getReturnType(method)
@@ -816,7 +756,6 @@ describe('OpenAPIToMCPConverter', () => {
       })
     })
   })
-
   it('preserves description on $ref nodes', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -833,7 +772,6 @@ describe('OpenAPIToMCPConverter', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const result = converter.convertOpenApiSchemaToJsonSchema(
       {
@@ -842,14 +780,12 @@ describe('OpenAPIToMCPConverter', () => {
       },
       new Set(),
     )
-
     expect(result).toEqual({
       $ref: '#/$defs/TestSchema',
       description: 'A schema description',
     })
   })
 })
-
 // Additional complex test scenarios as a table test
 describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
   interface TestCase {
@@ -870,7 +806,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
       openApiLookup: Record<string, OpenAPIV3.OperationObject & { method: string; path: string }>
     }
   }
-
   const cases: TestCase[] = [
     {
       name: 'Cyclic References with Full Descriptions',
@@ -972,7 +907,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                 inputSchema: {
                   type: 'object',
                   properties: {},
-                  required: [],
                 },
                 returnSchema: {
                   $ref: '#/$defs/A',
@@ -981,7 +915,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     A: {
                       type: 'object',
                       description: 'A schema description',
-                      additionalProperties: true,
                       properties: {
                         name: {
                           type: 'string',
@@ -997,7 +930,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     B: {
                       type: 'object',
                       description: 'B schema description',
-                      additionalProperties: true,
                       properties: {
                         title: {
                           type: 'string',
@@ -1026,12 +958,10 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     },
                   },
                   required: ['body'],
-
                   $defs: {
                     A: {
                       type: 'object',
                       description: 'A schema description',
-                      additionalProperties: true,
                       properties: {
                         name: {
                           type: 'string',
@@ -1047,7 +977,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     B: {
                       type: 'object',
                       description: 'B schema description',
-                      additionalProperties: true,
                       properties: {
                         title: {
                           type: 'string',
@@ -1065,12 +994,10 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                 returnSchema: {
                   $ref: '#/$defs/A',
                   description: 'Created A object',
-
                   $defs: {
                     A: {
                       type: 'object',
                       description: 'A schema description',
-                      additionalProperties: true,
                       properties: {
                         name: {
                           type: 'string',
@@ -1086,7 +1013,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     B: {
                       type: 'object',
                       description: 'B schema description',
-                      additionalProperties: true,
                       properties: {
                         title: {
                           type: 'string',
@@ -1253,7 +1179,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                 inputSchema: {
                   type: 'object',
                   properties: {},
-                  required: [],
                 },
                 returnSchema: {
                   $ref: '#/$defs/C',
@@ -1262,7 +1187,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     Base: {
                       type: 'object',
                       description: 'Base schema description',
-                      additionalProperties: true,
                       properties: {
                         baseName: {
                           type: 'string',
@@ -1276,7 +1200,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     },
                     D: {
                       type: 'object',
-                      additionalProperties: true,
                       description: 'D schema description',
                       properties: {
                         dProp: {
@@ -1287,7 +1210,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     },
                     E: {
                       type: 'object',
-                      additionalProperties: true,
                       description: 'E schema description',
                       properties: {
                         choice: {
@@ -1298,7 +1220,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     },
                     F: {
                       type: 'object',
-                      additionalProperties: true,
                       description: 'F schema description',
                       properties: {
                         fVal: {
@@ -1309,7 +1230,6 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
                     },
                     G: {
                       type: 'object',
-                      additionalProperties: true,
                       description: 'G schema description',
                       properties: {
                         gVal: {
@@ -1345,11 +1265,9 @@ describe('OpenAPIToMCPConverter - Additional Complex Tests', () => {
       },
     },
   ]
-
   it.each(cases)('$name', ({ input, expected }) => {
     const converter = new OpenAPIToMCPConverter(input)
     const { tools, openApiLookup } = converter.convertToMCPTools()
-
     // Use the custom verification instead of direct equality
     verifyTools(tools, expected.tools)
     expect(openApiLookup).toEqual(expected.openApiLookup)

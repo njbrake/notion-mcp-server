@@ -200,14 +200,12 @@ export class OpenAPIToMCPConverter {
     }
 
     // Convert binary format to uri-reference and enhance description
+    // Skip other format fields (int32, uuid, etc.) - they add tokens without helping LLMs
     if (schema.format === 'binary') {
       result.format = 'uri-reference'
       const binaryDesc = 'absolute paths to local files'
       result.description = schema.description ? `${schema.description} (${binaryDesc})` : binaryDesc
     } else {
-      if (schema.format) {
-        result.format = schema.format
-      }
       if (schema.description) {
         result.description = schema.description
       }
@@ -230,15 +228,15 @@ export class OpenAPIToMCPConverter {
           result.properties[name] = this.convertOpenApiSchemaToJsonSchema(propSchema, resolvedRefs, resolveRefs)
         }
       }
-      if (schema.required) {
+      if (schema.required && schema.required.length > 0) {
         result.required = schema.required
       }
-      if (schema.additionalProperties === true || schema.additionalProperties === undefined) {
-        result.additionalProperties = true
+      // Only include additionalProperties when it's false or a complex schema
+      // Skip additionalProperties: true since it's the default and wastes tokens
+      if (schema.additionalProperties === false) {
+        result.additionalProperties = false
       } else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
         result.additionalProperties = this.convertOpenApiSchemaToJsonSchema(schema.additionalProperties, resolvedRefs, resolveRefs)
-      } else {
-        result.additionalProperties = false
       }
     }
 
@@ -412,6 +410,11 @@ export class OpenAPIToMCPConverter {
       }
     }
 
+    // Clean up empty arrays to reduce token count
+    if (schema.required && schema.required.length === 0) {
+      delete schema.required
+    }
+
     // Add selective $defs - only include schemas that are actually referenced
     const selectiveDefs = this.buildSelectiveDefs(schema)
     if (selectiveDefs) {
@@ -558,6 +561,11 @@ export class OpenAPIToMCPConverter {
 
     // Extract return type (response schema)
     const returnSchema = this.extractResponseType(operation.responses)
+
+    // Clean up empty arrays to reduce token count
+    if (inputSchema.required && inputSchema.required.length === 0) {
+      delete inputSchema.required
+    }
 
     // Add selective $defs - only include schemas that are actually referenced
     const selectiveDefs = this.buildSelectiveDefs(inputSchema)

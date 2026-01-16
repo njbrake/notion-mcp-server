@@ -1,7 +1,6 @@
 import { OpenAPIV3 } from 'openapi-types'
 import { describe, it, expect } from 'vitest'
 import { OpenAPIToMCPConverter } from '../parser'
-
 describe('OpenAPI Multipart Form Parser', () => {
   it('converts single file upload endpoint to tool', () => {
     const spec: OpenAPIV3.Document = {
@@ -51,17 +50,14 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     expect(Object.keys(tools)).toHaveLength(1)
-
     const [tool] = Object.values(tools)
     expect(tool.methods).toHaveLength(1)
     const [method] = tool.methods
     expect(method.name).toBe('uploadPetPhoto')
     expect(method.description).toContain('Upload a photo for a pet')
-
     // Check parameters
     expect(method.inputSchema.properties).toEqual({
       id: {
@@ -77,12 +73,10 @@ describe('OpenAPI Multipart Form Parser', () => {
         description: expect.stringContaining('Optional caption'),
       },
     })
-
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('photo')
     expect(method.inputSchema.required).not.toContain('caption')
   })
-
   it('converts multiple file upload endpoint to tool', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -137,17 +131,14 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     expect(Object.keys(tools)).toHaveLength(1)
-
     const [tool] = Object.values(tools)
     expect(tool.methods).toHaveLength(1)
     const [method] = tool.methods
     expect(method.name).toBe('uploadPetDocuments')
     expect(method.description).toContain('Upload multiple documents')
-
     // Check parameters
     expect(method.inputSchema.properties).toEqual({
       id: {
@@ -170,12 +161,10 @@ describe('OpenAPI Multipart Form Parser', () => {
         description: expect.stringContaining('Optional tags'),
       },
     })
-
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('documents')
     expect(method.inputSchema.required).not.toContain('tags')
   })
-
   it('handles complex multipart forms with mixed content', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -246,17 +235,14 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     expect(Object.keys(tools)).toHaveLength(1)
-
     const [tool] = Object.values(tools)
     expect(tool.methods).toHaveLength(1)
     const [method] = tool.methods
     expect(method.name).toBe('updatePetProfile')
     expect(method.description).toContain('Update pet profile')
-
     // Check parameters
     expect(method.inputSchema.properties).toEqual({
       id: {
@@ -283,7 +269,6 @@ describe('OpenAPI Multipart Form Parser', () => {
           age: { type: 'integer' },
           breed: { type: 'string' },
         },
-        additionalProperties: true,
       },
       preferences: {
         type: 'array',
@@ -293,18 +278,15 @@ describe('OpenAPI Multipart Form Parser', () => {
             category: { type: 'string' },
             value: { type: 'string' },
           },
-          additionalProperties: true,
         },
       },
     })
-
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('avatar')
     expect(method.inputSchema.required).toContain('details')
     expect(method.inputSchema.required).not.toContain('gallery')
     expect(method.inputSchema.required).not.toContain('preferences')
   })
-
   it('handles optional file uploads in multipart forms', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -365,18 +347,15 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     const [tool] = Object.values(tools)
     const [method] = tool.methods
-
     expect(method.name).toBe('updatePetMetadata')
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('metadata')
     expect(method.inputSchema.required).not.toContain('certificate')
     expect(method.inputSchema.required).not.toContain('vaccinations')
-
     expect(method.inputSchema.properties).toEqual({
       id: {
         type: 'integer',
@@ -388,7 +367,6 @@ describe('OpenAPI Multipart Form Parser', () => {
           name: { type: 'string' },
           description: { type: 'string' },
         },
-        additionalProperties: true,
       },
       certificate: {
         type: 'string',
@@ -406,7 +384,6 @@ describe('OpenAPI Multipart Form Parser', () => {
       },
     })
   })
-
   it('handles nested objects with file arrays in multipart forms', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -473,22 +450,18 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     const [tool] = Object.values(tools)
     const [method] = tool.methods
-
     expect(method.name).toBe('addMedicalRecord')
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('record')
-
     // Verify nested structure is preserved
     const recordSchema = method.inputSchema.properties!.record as any
     expect(recordSchema.type).toBe('object')
     expect(recordSchema.required).toContain('date')
     expect(recordSchema.required).toContain('type')
-
     // Verify nested file array structure
     const attachmentsSchema = recordSchema.properties.attachments
     expect(attachmentsSchema.type).toBe('array')
@@ -498,7 +471,6 @@ describe('OpenAPI Multipart Form Parser', () => {
     expect(attachmentsSchema.items.required).toContain('file')
     expect(attachmentsSchema.items.required).toContain('type')
   })
-
   it('handles oneOf/anyOf schemas with file uploads', () => {
     const spec: OpenAPIV3.Document = {
       openapi: '3.0.0',
@@ -569,20 +541,16 @@ describe('OpenAPI Multipart Form Parser', () => {
         },
       },
     }
-
     const converter = new OpenAPIToMCPConverter(spec)
     const { tools } = converter.convertToMCPTools()
     const [tool] = Object.values(tools)
     const [method] = tool.methods
-
     expect(method.name).toBe('addPetContent')
     expect(method.inputSchema.required).toContain('id')
     expect(method.inputSchema.required).toContain('content')
-
     // Verify oneOf structure is preserved
     const contentSchema = method.inputSchema.properties!.content as any
     expect(contentSchema.oneOf).toHaveLength(2)
-
     // Check photo option
     const photoOption = contentSchema.oneOf[0]
     expect(photoOption.type).toBe('object')
@@ -590,7 +558,6 @@ describe('OpenAPI Multipart Form Parser', () => {
     expect(photoOption.properties.photo.description).toBe('absolute paths to local files')
     expect(photoOption.required).toContain('photo')
     expect(photoOption.required).toContain('isProfile')
-
     // Check document option
     const documentOption = contentSchema.oneOf[1]
     expect(documentOption.type).toBe('object')
