@@ -664,7 +664,8 @@
                   },
                   "after": {
                     "type": "string",
-                    "description": "The ID of the existing block that the new block should be appended after."
+                    "format": "uuid",
+                    "description": "The UUID of an existing block to insert after."
                   }
                 }
               }
